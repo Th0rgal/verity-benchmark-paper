@@ -11,8 +11,10 @@
 \usepackage{booktabs}
 \usepackage{cite}
 \usepackage{hyperref}
+\usepackage{pgfplots}
 \usepackage{xcolor}
 \usepackage{listings}
+\pgfplotsset{compat=1.18}
 
 \newif\ifanonymous
 \ifnum\anonymousbuild=1
@@ -29,7 +31,7 @@
 \ifanonymous
   \newcommand{\artifactrepo}{\repoanon}
 \else
-  \newcommand{\artifactrepo}{\url{https://github.com/lfglabs-dev/verity-benchmark}}
+  \newcommand{\artifactrepo}{\url{https://github.com/lfglabs-dev/ethereum-verification-benchmark}}
 \fi
 
 \lstdefinelanguage{LeanFour}{
@@ -261,7 +263,7 @@ timelock properties, temporal/liveness properties, cross-contract
 compositional reasoning, cryptographic assumptions, and adversarial EVM-level
 behavior.
 
-\input{generated/tables.tex}
+\input{generated/suite_tables.tex}
 
 \section{Methodology}
 
@@ -307,6 +309,9 @@ are not merely failing uniformly, but the best result still leaves 69 tasks
 unverified. This makes the benchmark useful for measuring incremental progress
 rather than for declaring the problem solved.
 
+\input{generated/result_figures.tex}
+\input{generated/result_tables.tex}
+
 Table~\ref{tab:partial-results} reports the non-complete artifacts from the
 same v0.1 release, including partial and invalid runs. The most notable partial
 artifact is GPT-5.5 Pro, which verifies 35 of 54 attempted tasks. That is a
@@ -314,6 +319,17 @@ high within-run rate, but it is not a complete-suite result and therefore
 should not be ranked against complete 135-task runs. Invalid zero-usage
 artifacts are retained in the release manifest because they document failed
 provider or scheduling attempts rather than proof capability.
+
+The MiniMax budget-scaling sidecar in Figure~\ref{fig:minimax-budget} answers a
+different question from the leaderboard. It does not rerank models on the full
+benchmark. Instead, it selects a 50-task panel consisting of the 38 tasks solved
+by MiniMax M3 in the complete v0.1 run, topped up with 12 tasks solved by
+GPT-5.5 but not MiniMax, and reruns only the still-unsolved tasks at increasing
+budgets. On this selected panel, MiniMax reaches 48 of 50 tasks at the high
+budget profile, or 96\%. This suggests that some apparent model gaps are
+budget-sensitive, but the experiment is deliberately reported as a sidecar
+because its adaptive cascade methodology is not the same as the complete-suite
+leaderboard.
 
 Manual inspection of successful tasks suggests that agents are strongest on
 local state updates, direct arithmetic equalities, frame properties, and
