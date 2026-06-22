@@ -162,7 +162,7 @@ def main():
     result_lines.append(r"\end{table}" + "\n\n")
 
     result_lines.append(r"\begin{table}[t]" + "\n")
-    result_lines.append(r"\caption{Non-complete v0.1 release artifacts. These artifacts are useful diagnostics but are not ranked with complete-suite runs.}" + "\n")
+    result_lines.append(r"\caption{Non-complete v0.1 release artifacts. These artifacts document failed, partial, or invalid runs and are not ranked with complete-suite runs.}" + "\n")
     result_lines.append(r"\label{tab:partial-results}" + "\n")
     result_lines.append(r"\centering" + "\n")
     result_lines.append(r"\footnotesize" + "\n")
