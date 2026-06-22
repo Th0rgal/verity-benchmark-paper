@@ -1,0 +1,38 @@
+name: build
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  latex:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout paper
+        uses: actions/checkout@v4
+        with:
+          path: verity-benchmark-paper
+
+      - name: Checkout benchmark data
+        uses: actions/checkout@v4
+        with:
+          repository: lfglabs-dev/verity-benchmark
+          path: verity-benchmark
+
+      - name: Install TeX
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y latexmk texlive-latex-base texlive-latex-recommended texlive-fonts-recommended texlive-publishers poppler-utils
+
+      - name: Build anonymous and author PDFs
+        working-directory: verity-benchmark-paper
+        run: make check
+
+      - name: Check anonymous text for direct identifiers
+        working-directory: verity-benchmark-paper
+        run: |
+          pdftotext build/paper-anonymous.pdf - | \
+            if grep -Ei 'Thomas|Marchand|Th0rgal|github.com/lfglabs|research@|Acknowledg'; then
+              echo "Anonymous PDF contains direct identifying text"
+              exit 1
+            fi
