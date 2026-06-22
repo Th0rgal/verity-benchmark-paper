@@ -54,19 +54,19 @@
 \makeatletter
 \def\abstract{\normalfont
     \if@twocolumn
-      \@IEEEabskeysecsize\bfseries\textit{\abstractname}:\relax
+      \@IEEEabskeysecsize\bfseries\textit{\abstractname}: \relax
     \else
       \bgroup\par\addvspace{0.5\baselineskip}\centering\vspace{-1.78ex}\@IEEEabskeysecsize\textbf{\abstractname}\par\addvspace{0.5\baselineskip}\egroup\quotation\@IEEEabskeysecsize
     \fi\@IEEEgobbleleadPARNLSP}
 \def\IEEEkeywords{\normalfont
     \if@twocolumn
-      \@IEEEabskeysecsize\bfseries\textit{\IEEEkeywordsname}:\relax
+      \@IEEEabskeysecsize\bfseries\textit{\IEEEkeywordsname}: \relax
     \else
       \bgroup\par\addvspace{0.5\baselineskip}\centering\@IEEEabskeysecsize\textbf{\IEEEkeywordsname}\par\addvspace{0.5\baselineskip}\egroup\quotation\@IEEEabskeysecsize
     \fi\@IEEEgobbleleadPARNLSP}
 \makeatother
 
-\title{Ethereum Verification Benchmark: An Open Suite for Evaluating AI Agents at Generating Lean 4 Proofs of Smart Contract Correctness}
+\title{Ethereum Verification Benchmark: Evaluating AI Agents on Lean 4 Proofs for Smart Contracts}
 
 \ifanonymous
 \author{\IEEEauthorblockN{Anonymous Authors}}
@@ -81,27 +81,26 @@ research@thomas.md}}
 \maketitle
 
 \begin{abstract}
-Formal verification is used in smart contract assurance, but mechanized proofs
-remain expensive to write. Recent AI agents can use compilers and revise proof
-scripts from error messages. This makes proof generation a concrete target
-rather than a purely manual activity. Existing benchmarks rarely ask agents to
-produce complete, machine-checkable proofs for contract obligations. They more
-often test informal reasoning, small programs, or unit tests. \toolname{} is an
-open evaluation suite for measuring whether AI agents can generate \lean{}
-proofs of Ethereum smart contract correctness.
-Built on Verity's shallow embedding of contract semantics in \lean{}, the
-benchmark contains \BenchmarkTaskCount{} proof tasks across
-\BenchmarkCaseCount{} deployed or ecosystem-relevant Ethereum cases. Each task
-fixes the public proof interface and the verifier pipeline. Hidden reference
-proofs are withheld from agents. The harness rejects \texttt{sorry},
-\texttt{admit}, new axioms, theorem-statement edits, or unavailable imports.
-Version manifests bind scores to fingerprints for the task and its execution
-context. This makes reruns reproducible. We give the benchmark design and the
-v0.1 release results. The strongest complete run, GPT-5.5, verifies 66 of 135
-tasks. GLM 5.2 verifies 53 and Opus 4.8 verifies 45. Other complete runs range
-down to 31 tasks. The strongest complete run solves less than half of the suite.
-A budget-scaling sidecar shows that some failures depend on effort as well as
-model choice.
+Formal verification helps find serious errors in smart contracts, but writing
+machine-checked proofs still takes substantial expert work. AI agents can now
+use compiler feedback to revise proof scripts. This makes it useful to test
+whether agents can produce complete proofs, not just informal arguments or small
+code fragments. Existing benchmarks rarely test this ability for smart contract
+obligations. \toolname{} is an open evaluation suite for measuring whether AI
+agents can generate \lean{} proofs of Ethereum smart contract correctness.
+
+The benchmark uses Verity's shallow embedding of contract semantics in \lean{}.
+It contains \BenchmarkTaskCount{} proof tasks from \BenchmarkCaseCount{}
+deployed or ecosystem-relevant Ethereum cases. Each task has a fixed public
+proof interface and a fixed verifier pipeline. Agents do not see the hidden
+reference proofs. The harness rejects \texttt{sorry}, \texttt{admit}, new
+axioms, theorem-statement edits, and unavailable imports. Version manifests
+record fingerprints for each task and execution context, so scores can be
+reproduced. We describe the benchmark design and the v0.1 release results. In
+complete runs, GPT-5.5 verifies 66 of 135 tasks, GLM 5.2 verifies 53, and Opus
+4.8 verifies 45. Other complete runs verify as few as 31 tasks. Even the best
+complete run solves less than half of the suite. A budget-scaling sidecar
+suggests that some failures depend on search effort as well as model choice.
 \end{abstract}
 
 \begin{IEEEkeywords}
@@ -111,51 +110,48 @@ AI agents, Ethereum
 
 \section{Introduction}
 
-Formal verification of smart contracts has matured. Tools such as the Certora
-Prover and K-based Ethereum analyses such as KEVM are used on production
-protocols. Foundry has also made property tests part of everyday Ethereum
-engineering practice~\cite{certora,kevm,kframework,foundry}.
-The bottleneck is often not the kernel of the prover, but the human who
-must translate protocol intent into precise invariants and then write the proof.
-For large decentralized finance protocols, this labor can take weeks or
-months and requires rare expertise at the intersection of protocol design,
-EVM semantics, and theorem proving over fixed-width arithmetic.
+Formal verification is now used in smart contract assurance. Tools such as the
+Certora Prover and K-based Ethereum analyses such as KEVM are used on production
+protocols. Foundry has also made property tests common in Ethereum engineering
+practice~\cite{certora,kevm,kframework,foundry}. The hard part is often not
+running the prover. It is turning protocol intent into exact invariants and then
+writing the proof. For large decentralized finance protocols, this work can
+take weeks or months and requires knowledge of protocol design, EVM semantics,
+and theorem proving over fixed-width arithmetic.
 
-AI agents make this bottleneck measurable in a new way. Modern agents can
-use compiler feedback to revise proof scripts inside a workspace. In
-mathematics and programming, benchmarks such as miniF2F, LeanDojo, HumanEval,
-and SWE-bench have made progress easier to compare~\cite{minif2f,leandojo,humaneval,swebench}.
-However, these benchmarks do not measure the target capability needed by
-Ethereum verification teams: generating complete \lean{} proofs for
-state-transition correctness properties of real smart contracts under a
-machine-checked verifier.
+AI agents make this problem easier to measure. Modern agents can revise proof
+scripts inside a repository by using compiler feedback. Benchmarks in
+mathematics and programming, including miniF2F, LeanDojo, HumanEval, and
+SWE-bench, have made progress easier to compare~\cite{minif2f,leandojo,humaneval,swebench}.
+Those benchmarks do not test the specific ability needed by Ethereum
+verification teams: generating complete \lean{} proofs for smart contract
+state-transition properties under a machine-checked verifier.
 
-\toolname{} targets this missing setting. It evaluates agents on proof-only
-tasks derived from Ethereum protocols and ecosystem contracts. Each task gives
-the agent a fixed contract model, a fixed formal specification, and one editable
-\lean{} proof file. The agent succeeds only if an independent verifier accepts
-the submitted proof. The verifier checks the theorem statement, rejects proof
-placeholders and enforces a trusted axiom ledger. It then rebuilds the proof in
+\toolname{} targets this setting. It evaluates agents on proof-only tasks from
+Ethereum protocols and ecosystem contracts. Each task gives the agent a fixed
+contract model, a fixed formal specification, and one editable \lean{} proof
+file. The agent succeeds only when an independent verifier accepts the submitted
+proof. The verifier checks that the theorem statement has not changed, rejects
+proof placeholders, enforces a trusted axiom ledger, and rebuilds the proof in
 an isolated workspace. Reference proofs are not present in that workspace.
 
-The benchmark is complementary to existing verification tools. Certora, KEVM,
-K, Foundry, and similar tools help engineers state and check contract
-properties. \toolname{} instead evaluates the proof-producing agent: can it
-complete a formal proof once the contract semantics and property are fixed? It
-is also distinct from general
-software engineering and theorem-proving benchmarks because its tasks combine
-uint256 arithmetic with protocol invariants drawn from deployed Ethereum
-systems.
+The benchmark is not a replacement for contract verification tools. Certora,
+KEVM, K, Foundry, and related tools help engineers state and check contract
+properties. \toolname{} instead evaluates the proof-producing agent. It asks
+whether an agent can complete a formal proof after the contract semantics and
+property have already been fixed. This differs from general software engineering
+and theorem-proving benchmarks because the tasks combine uint256 arithmetic with
+protocol invariants from Ethereum systems.
 
-The paper contributes a benchmark protocol for AI-generated smart contract
+This paper contributes a benchmark protocol for AI-generated smart contract
 proofs. The protocol isolates tasks, checks theorem integrity, rejects proof
-placeholders, and enforces axiom accounting in CI. It also describes the v0.1
-suite: \BenchmarkTaskCount{} tasks over \BenchmarkCaseCount{} cases and
-\BenchmarkFamilyCount{} protocol families. Coverage is strongest in accounting,
-solvency, storage effects, and linked-list ownership structures. The paper then
-reports the v0.1 result artifacts. The best complete run solves 49\% of tasks.
-The per-task outcomes show better performance on local arithmetic and storage
-obligations than on longer invariant chains and cross-state reasoning.
+placeholders, and accounts for axioms in CI. It also describes the v0.1 suite:
+\BenchmarkTaskCount{} tasks across \BenchmarkCaseCount{} cases and
+\BenchmarkFamilyCount{} protocol families. The suite mainly covers accounting,
+solvency, storage effects, and linked-list ownership structures. We report the
+v0.1 result artifacts. The best complete run solves 49\% of tasks. Per-task
+outcomes show stronger results on local arithmetic and storage obligations than
+on longer invariant chains and cross-state reasoning.
 
 \section{Related Work}
 
@@ -283,8 +279,8 @@ assumptions, and adversarial EVM behavior.
 \subsection{Versioned Manifests}
 
 Scores are comparable only relative to a fixed benchmark version. Version
-\BenchmarkVersion{} records the ordered task set, Git commit, mode, budget,
-and compatibility fingerprints. The task set identifier is
+\BenchmarkVersion{} records the ordered task set, source commit, run mode,
+budget, and compatibility fingerprints. The task set identifier is
 \BenchmarkTaskSetId{}. The harness identifier is \BenchmarkHarnessId{}. The
 environment identifier is \BenchmarkEnvironmentId{}. The source commit recorded
 by the manifest is \BenchmarkGitSha{}.

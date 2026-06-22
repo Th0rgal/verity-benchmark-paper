@@ -2,7 +2,7 @@
 
 IEEE short-paper draft for Blockchain Confluence / ICDLT 2026:
 
-**Ethereum Verification Benchmark: An Open Suite for Evaluating AI Agents at Generating Lean 4 Proofs of Smart Contract Correctness**
+**Ethereum Verification Benchmark: Evaluating AI Agents on Lean 4 Proofs for Smart Contracts**
 
 The paper is built from the official IEEEtran conference class and supports both double-anonymous and author builds.
 
