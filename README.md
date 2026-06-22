@@ -1,4 +1,4 @@
-# Verity Benchmark Paper
+# Ethereum Verification Benchmark Paper
 
 IEEE short-paper draft for Blockchain Confluence / ICDLT 2026:
 
