@@ -12,9 +12,11 @@
 \usepackage{cite}
 \usepackage{hyperref}
 \usepackage{pgfplots}
+\usepackage{tikz}
 \usepackage{xcolor}
 \usepackage{listings}
 \pgfplotsset{compat=1.18}
+\usetikzlibrary{arrows.meta,positioning}
 
 \newif\ifanonymous
 \ifnum\anonymousbuild=1
@@ -155,31 +157,38 @@ on longer invariant chains and cross-state reasoning.
 
 \section{Related Work}
 
-\textbf{Smart contract verification.}
-The K framework provides executable semantics and program analysis
-infrastructure, including KEVM for Ethereum bytecode~\cite{kframework,kevm}.
-Runtime Verification applies these semantics to blockchain systems and
-production audits~\cite{runtimeverification}. Certora provides a widely used
-specification and verification workflow for smart contracts~\cite{certora}.
-Foundry brings fast Solidity testing, fuzzing, and invariant tests into the
-developer workflow~\cite{foundry}. These systems check contract behavior. Our
-benchmark checks whether agents can synthesize the machine-checked proof
-artifacts required by a \lean{}-based verification workflow.
+Table~\ref{tab:related-comparison} summarizes the closest lines of work.
+Smart contract verification tools check properties of programs. Coding
+benchmarks check whether agents can write or edit code. Theorem-proving
+benchmarks check proof search, mostly on mathematical tasks. \toolname{} sits
+at their intersection: the input is a smart contract proof obligation, and the
+output must be a \lean{} proof accepted by an independent verifier.
 
-\textbf{AI coding benchmarks.}
-HumanEval measures function-level code synthesis from natural language
-prompts~\cite{humaneval}. SWE-bench evaluates agents on issue-resolution tasks
-in real software repositories~\cite{swebench}. These benchmarks measure coding
-ability, but they do not require a formal proof object accepted by a theorem
-prover, nor do they encode EVM-specific semantic obligations.
+\begin{table*}[t]
+\caption{Comparison with nearby verification and agent-evaluation work.}
+\label{tab:related-comparison}
+\centering
+\scriptsize
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{@{}p{0.17\textwidth}p{0.16\textwidth}p{0.15\textwidth}p{0.15\textwidth}p{0.09\textwidth}p{0.09\textwidth}@{}}
+\toprule
+Work & Target & Input & Output & Agent eval. & Contracts \\
+\midrule
+Certora Prover~\cite{certora} & Contract properties & Contract plus specifications & Verification result & No & Yes \\
+KEVM and K~\cite{kframework,kevm} & EVM semantics and analyses & Program plus formal semantics & Semantics-based proof or analysis & No & Yes \\
+Ethereum model checking~\cite{bang2020ethereum} & Solidity control flow & Contract model & Model-checking result & No & Yes \\
+Move model checking~\cite{keilty2022move} & Move contracts & Move model & Model-checking result & No & Yes \\
+HumanEval and SWE-bench~\cite{humaneval,swebench} & Code generation and repair & Prompt or repo issue & Passing code change & Yes & No \\
+miniF2F and LeanDojo~\cite{minif2f,leandojo} & Theorem proving & Formal theorem & Machine-checked proof & Yes & No \\
+\toolname{} & Ethereum proof tasks & Fixed contract model and theorem & Accepted \lean{} proof & Yes & Yes \\
+\bottomrule
+\end{tabular}
+\end{table*}
 
-\textbf{LLMs and theorem proving.}
-Benchmarks such as miniF2F and LeanDojo evaluate proof search in Lean and
-related environments. Systems such as DeepSeek-Prover improve proof search in
-this setting~\cite{minif2f,leandojo,deepseekprover}.
-Their tasks are primarily mathematical. \toolname{} targets a different
-distribution: contract state machines with storage-frame properties, arithmetic
-rounding, authorization, solvency, and protocol-specific accounting.
+LLM work on smart contracts has mostly studied code generation, vulnerability
+detection, or repair~\cite{napoli2024llmcontracts}. That is useful, but it is
+not the same target. This paper measures whether an agent can produce the proof
+artifact itself after the property and formal model are fixed.
 
 \section{Background: Verity and Lean Proof Tasks}
 
@@ -212,6 +221,28 @@ Instead, each case declares the formal surface it exercises, and the suite makes
 coverage limitations explicit.
 
 \section{Benchmark Design}
+
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}[
+  box/.style={draw, rounded corners=1.2pt, align=center, font=\scriptsize,
+    minimum width=.82\columnwidth, minimum height=0.30in, inner sep=3pt},
+  arrow/.style={-{Stealth[length=5pt]}, thick},
+  node distance=0.105in
+]
+\node[box] (task) {Task manifest\\public model, specification, theorem};
+\node[box, below=of task] (workspace) {Agent workspace\\one editable proof file};
+\node[box, below=of workspace] (proof) {Submitted proof\\candidate \lean{} code};
+\node[box, below=of proof] (checks) {Verifier gates\\statement, placeholders, axioms, imports};
+\node[box, below=of checks] (result) {Result artifact\\pass/fail status, hashes, run metadata};
+\draw[arrow] (task) -- (workspace);
+\draw[arrow] (workspace) -- (proof);
+\draw[arrow] (proof) -- (checks);
+\draw[arrow] (checks) -- (result);
+\end{tikzpicture}
+\caption{Benchmark workflow. Agents see only the public task files. Hidden reference proofs are used for suite validation, not during agent runs.}
+\label{fig:workflow}
+\end{figure}
 
 \subsection{Task Contract}
 
