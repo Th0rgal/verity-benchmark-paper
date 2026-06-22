@@ -82,28 +82,26 @@ research@thomas.md}}
 
 \begin{abstract}
 Formal verification is used in smart contract assurance, but mechanized proofs
-remain expensive to write. Recent AI agents can edit code, invoke tools, and
-repair compiler errors, which makes proof generation a concrete target rather
-than a purely manual activity. Existing benchmarks, however, rarely ask agents
-to produce complete, machine-checkable proofs for contract obligations instead
-of informal arguments or unit tests. \toolname{} is an open evaluation suite
-for measuring whether AI agents can generate \lean{} proofs of Ethereum smart
-contract correctness.
+remain expensive to write. Recent AI agents can use compilers and revise proof
+scripts from error messages. This makes proof generation a concrete target
+rather than a purely manual activity. Existing benchmarks rarely ask agents to
+produce complete, machine-checkable proofs for contract obligations. They more
+often test informal reasoning, small programs, or unit tests. \toolname{} is an
+open evaluation suite for measuring whether AI agents can generate \lean{}
+proofs of Ethereum smart contract correctness.
 Built on Verity's shallow embedding of contract semantics in \lean{}, the
 benchmark contains \BenchmarkTaskCount{} proof tasks across
 \BenchmarkCaseCount{} deployed or ecosystem-relevant Ethereum cases. Each task
-fixes the contract, specification, theorem statement, allowed files, and
-verifier pipeline; hidden reference proofs are withheld from agents. The
-harness rejects \texttt{sorry}, \texttt{admit}, new axioms, theorem-statement
-edits, and imports unavailable in the isolated workspace. Version manifests
-bind scores to task, harness, and environment fingerprints, enabling
-reproducible reruns and leaderboard comparisons. We describe the benchmark
-design, its v0.1 composition, and preliminary release results across all
-published complete-suite runs. The strongest complete run, GPT-5.5, verifies
-66 of 135 tasks; GLM 5.2 verifies 53, Opus 4.8 verifies 45, and the remaining
-complete runs range down to 31 tasks. The strongest complete run solves less
-than half of the suite, while a budget-scaling sidecar shows that some failures
-are sensitive to effort rather than only model choice.
+fixes the public proof interface and the verifier pipeline. Hidden reference
+proofs are withheld from agents. The harness rejects \texttt{sorry},
+\texttt{admit}, new axioms, theorem-statement edits, or unavailable imports.
+Version manifests bind scores to fingerprints for the task and its execution
+context. This makes reruns reproducible. We give the benchmark design and the
+v0.1 release results. The strongest complete run, GPT-5.5, verifies 66 of 135
+tasks. GLM 5.2 verifies 53 and Opus 4.8 verifies 45. Other complete runs range
+down to 31 tasks. The strongest complete run solves less than half of the suite.
+A budget-scaling sidecar shows that some failures depend on effort as well as
+model choice.
 \end{abstract}
 
 \begin{IEEEkeywords}
@@ -114,49 +112,48 @@ AI agents, Ethereum
 \section{Introduction}
 
 Formal verification of smart contracts has matured. Tools such as the Certora
-Prover, KEVM, and K-framework based analyses are used on production protocols,
-and property-based testing frameworks such as Foundry have made specification
-writing part of everyday Ethereum engineering practice~\cite{certora,kevm,kframework,foundry}.
+Prover and K-based Ethereum analyses such as KEVM are used on production
+protocols. Foundry has also made property tests part of everyday Ethereum
+engineering practice~\cite{certora,kevm,kframework,foundry}.
 The bottleneck is often not the kernel of the prover, but the human who
 must translate protocol intent into precise invariants and then write the proof.
 For large decentralized finance protocols, this labor can take weeks or
 months and requires rare expertise at the intersection of protocol design,
-integer arithmetic, EVM semantics, and interactive theorem proving.
+EVM semantics, and theorem proving over fixed-width arithmetic.
 
 AI agents make this bottleneck measurable in a new way. Modern agents can
-inspect a workspace, call a compiler, read error messages, and modify proof scripts. In
+use compiler feedback to revise proof scripts inside a workspace. In
 mathematics and programming, benchmarks such as miniF2F, LeanDojo, HumanEval,
-and SWE-bench have made progress measurable~\cite{minif2f,leandojo,humaneval,swebench}.
+and SWE-bench have made progress easier to compare~\cite{minif2f,leandojo,humaneval,swebench}.
 However, these benchmarks do not measure the target capability needed by
 Ethereum verification teams: generating complete \lean{} proofs for
 state-transition correctness properties of real smart contracts under a
 machine-checked verifier.
 
-\toolname{} targets this missing evaluation setting. It evaluates agents on proof-only
+\toolname{} targets this missing setting. It evaluates agents on proof-only
 tasks derived from Ethereum protocols and ecosystem contracts. Each task gives
 the agent a fixed contract model, a fixed formal specification, and one editable
-\lean{} proof file. The agent succeeds only if its submitted proof is accepted
-by an independent verifier that checks the theorem statement, rejects proof
-placeholders, enforces a trusted axiom ledger, and rebuilds the proof in an
-isolated workspace where reference proofs are unavailable.
+\lean{} proof file. The agent succeeds only if an independent verifier accepts
+the submitted proof. The verifier checks the theorem statement, rejects proof
+placeholders and enforces a trusted axiom ledger. It then rebuilds the proof in
+an isolated workspace. Reference proofs are not present in that workspace.
 
 The benchmark is complementary to existing verification tools. Certora, KEVM,
-K, Foundry, and related systems provide languages, engines, and workflows for
-checking smart contract properties. \toolname{} instead evaluates the
-proof-producing agent: can it complete a formal proof obligation once the
-contract semantics and property are fixed? It is also distinct from general
+K, Foundry, and similar tools help engineers state and check contract
+properties. \toolname{} instead evaluates the proof-producing agent: can it
+complete a formal proof once the contract semantics and property are fixed? It
+is also distinct from general
 software engineering and theorem-proving benchmarks because its tasks combine
-uint256 arithmetic, storage updates, state-transition semantics, and protocol
-invariants drawn from deployed Ethereum systems.
+uint256 arithmetic with protocol invariants drawn from deployed Ethereum
+systems.
 
-This paper makes three contributions. First, it defines a benchmark protocol for
-AI-generated smart contract proofs, including task isolation, theorem-statement
-checking, no-placeholder rules, and CI-enforced axiom accounting. Second, it
-describes the v0.1 suite: \BenchmarkTaskCount{} tasks over
-\BenchmarkCaseCount{} cases and \BenchmarkFamilyCount{} protocol families, with
-coverage strongest in accounting, solvency, storage effects, and linked-list
-ownership structures. Third, it reports the complete-suite and partial-run
-results published with v0.1. The best complete run solves 49\% of tasks.
+The paper contributes a benchmark protocol for AI-generated smart contract
+proofs. The protocol isolates tasks, checks theorem integrity, rejects proof
+placeholders, and enforces axiom accounting in CI. It also describes the v0.1
+suite: \BenchmarkTaskCount{} tasks over \BenchmarkCaseCount{} cases and
+\BenchmarkFamilyCount{} protocol families. Coverage is strongest in accounting,
+solvency, storage effects, and linked-list ownership structures. The paper then
+reports the v0.1 result artifacts. The best complete run solves 49\% of tasks.
 The per-task outcomes show better performance on local arithmetic and storage
 obligations than on longer invariant chains and cross-state reasoning.
 
@@ -181,24 +178,26 @@ ability, but they do not require a formal proof object accepted by a theorem
 prover, nor do they encode EVM-specific semantic obligations.
 
 \textbf{LLMs and theorem proving.}
-miniF2F, LeanDojo, and later theorem-proving systems including DeepSeek-Prover
-evaluate or improve proof search in Lean and related environments~\cite{minif2f,leandojo,deepseekprover}.
+Benchmarks such as miniF2F and LeanDojo evaluate proof search in Lean and
+related environments. Systems such as DeepSeek-Prover improve proof search in
+this setting~\cite{minif2f,leandojo,deepseekprover}.
 Their tasks are primarily mathematical. \toolname{} targets a different
-distribution: contract state machines, storage-frame properties, arithmetic
+distribution: contract state machines with storage-frame properties, arithmetic
 rounding, authorization, solvency, and protocol-specific accounting.
 
 \section{Background: Verity and Lean Proof Tasks}
 
-Verity is a \lean{} framework for writing smart contracts, specifications, and
-proofs against a shallow embedding of contract semantics. In a shallow
+Verity is a \lean{} framework for writing specifications and proofs for smart
+contracts. It uses a shallow embedding of contract semantics. In a shallow
 embedding, contract operations are represented using host-language definitions
 and propositions rather than as uninterpreted syntax alone. This gives proof
 authors direct access to \lean{}'s theorem prover while preserving a semantic
-model of storage, calls, arithmetic, and state transitions.
+model of contract storage and state transitions.
 
-A benchmark task fixes three ingredients. The contract model defines the
-operation being verified. The specification states the intended postcondition or
-invariant. The target theorem connects the implementation to the specification.
+A benchmark task fixes the implementation side and the theorem to prove. The
+contract model defines the operation being verified. The specification states
+the intended postcondition or invariant. The target theorem connects the
+implementation to the specification.
 The editable proof file initially contains the theorem statement and an empty
 proof body; hidden reference proofs exist only for benchmark validation and are
 not present in the agent workspace.
@@ -221,10 +220,11 @@ coverage limitations explicit.
 \subsection{Task Contract}
 
 Every task is a proof-only problem. Agents may edit only designated proof files.
-They may inspect public contract and specification files, generic helper
-libraries, and a generated task summary. They may not see the hidden reference
-proof, modify the theorem statement, add axioms, or alter the verifier. This
-keeps scores focused on proof synthesis rather than benchmark adaptation.
+They may inspect the public task files. They also receive helper libraries and
+a generated summary.
+They may not see the hidden reference proof, modify the theorem statement, add
+axioms, or alter the verifier. This keeps scores focused on proof synthesis
+rather than benchmark adaptation.
 
 \subsection{Axiom Ledger and Placeholder Rules}
 
@@ -253,19 +253,18 @@ and catches imports that were not available to the agent.
 
 \subsection{Verifier Pipeline}
 
-The verifier checks workspace policy, theorem integrity, placeholder absence,
-axiom policy, imports, and Lean compilation. A task result is counted as
-verified only if all checks pass. Other outcomes are recorded as failures or
-invalid artifacts, preserving information about provider failures and zero-token
-runs without ranking them as complete results.
+The verifier checks the workspace policy and theorem integrity. It then checks
+placeholder rejection, axiom compliance, import validity, and \lean{}
+compilation. A task result is counted as verified only if all checks pass. Other
+outcomes are recorded as failures or invalid artifacts. This keeps provider
+failures and zero-token runs visible without ranking them as complete results.
 
 \section{Suite Composition}
 
 Version \BenchmarkVersion{} contains \BenchmarkTaskCount{} active task
 manifests over \BenchmarkCaseCount{} cases and \BenchmarkFamilyCount{} protocol
-families. The tasks are drawn from Ethereum and Ethereum-adjacent protocols,
-DeFi systems, token standards, bridge logic, access-control modules, and
-security challenge contracts. The suite intentionally mixes simple local
+families. The tasks are drawn from Ethereum protocols and ecosystem contracts,
+including security challenge cases. The suite intentionally mixes simple local
 storage updates with harder arithmetic and invariant-preservation tasks.
 
 The active difficulty distribution is \BenchmarkEasyTasks{} easy,
@@ -273,10 +272,9 @@ The active difficulty distribution is \BenchmarkEasyTasks{} easy,
 \BenchmarkOtherDifficultyTasks{} other. Stronger areas include accounting
 conservation, local state preservation, guarded solvency, storage writes,
 access-control identity, and linked-list ownership structures. Thinner areas in
-v0.1 include deep reentrancy reasoning, oracle manipulation, governance and
-timelock properties, temporal/liveness properties, cross-contract
-compositional reasoning, cryptographic assumptions, and adversarial EVM-level
-behavior.
+v0.1 include deep reentrancy reasoning, oracle manipulation, governance,
+timelock properties, liveness, cross-contract composition, cryptographic
+assumptions, and adversarial EVM behavior.
 
 \input{generated/suite_tables.tex}
 
@@ -287,7 +285,7 @@ behavior.
 Scores are comparable only relative to a fixed benchmark version. Version
 \BenchmarkVersion{} records the ordered task set, Git commit, mode, budget,
 and compatibility fingerprints. The task set identifier is
-\BenchmarkTaskSetId{}, the harness identifier is \BenchmarkHarnessId{}, and the
+\BenchmarkTaskSetId{}. The harness identifier is \BenchmarkHarnessId{}. The
 environment identifier is \BenchmarkEnvironmentId{}. The source commit recorded
 by the manifest is \BenchmarkGitSha{}.
 
@@ -307,9 +305,9 @@ remain visible without being ranked against complete-suite runs.
 \subsection{Metrics}
 
 The primary metric is verified tasks over total active tasks. Token counts are
-reported when providers expose them, but they are secondary because provider
-interfaces, sampling controls, rate limits, and agent wrappers differ. The
-v0.1 release separates complete-suite runs from partial artifacts, so the
+reported when providers expose them. They are secondary because provider
+settings and agent wrappers differ. The v0.1 release separates complete-suite
+runs from partial artifacts, so the
 headline comparison ranks only complete runs while retaining partial runs as
 diagnostic evidence.
 
@@ -318,9 +316,9 @@ diagnostic evidence.
 Table~\ref{tab:results} reports every complete-suite v0.1 run published in the
 release artifacts. GPT-5.5 verifies 66 of 135 tasks, the strongest complete
 score in the release. GLM 5.2 verifies 53 tasks, Opus 4.8 verifies 45,
-grok-build-0.1 verifies 41, MiniMax M3 verifies 38, Kimi K2.7 verifies 31, and
-no complete run crosses the halfway point. The spread matters: current agents
-do not fail uniformly, but the best result still leaves 69 tasks unverified.
+grok-build-0.1 verifies 41, MiniMax M3 verifies 38, and Kimi K2.7 verifies 31.
+No complete run crosses the halfway point. The spread matters: current agents
+do not fail uniformly. Still, the best result leaves 69 tasks unverified.
 The suite therefore measures partial progress without treating proof generation
 as solved.
 
@@ -328,9 +326,9 @@ as solved.
 \input{generated/result_tables.tex}
 
 Table~\ref{tab:partial-results} reports the non-complete artifacts from the
-same v0.1 release, including partial and invalid runs. The most notable partial
-artifact is GPT-5.5 Pro, which verifies 35 of 54 attempted tasks. That is a
-high within-run rate, but it is not a complete-suite result and therefore
+same v0.1 release. It includes partial and invalid runs. The most notable
+partial artifact is GPT-5.5 Pro, which verifies 35 of 54 attempted tasks. That
+is a high within-run rate, but it is not a complete-suite result and therefore
 should not be ranked against complete 135-task runs. Invalid zero-usage
 artifacts are retained in the release manifest because they document failed
 provider or scheduling attempts rather than proof capability.
@@ -345,14 +343,13 @@ budget profile, or 96\%. This indicates that some apparent model gaps are
 budget-sensitive. The experiment is reported as a sidecar because its adaptive
 cascade methodology is not the same as the complete-suite leaderboard.
 
-Manual inspection of successful tasks suggests that agents are strongest on
-local state updates, direct arithmetic equalities, frame properties, and
-specifications where the needed lemmas are close to the target theorem. Failures
-often involve larger invariant chains, non-obvious arithmetic normalization,
-stateful reasoning across several fields, or discovering the right helper lemma
-from the library. This aligns with the suite composition: local accounting and
-storage obligations are better represented and currently more tractable, while
-compositional protocol reasoning remains a future target.
+Manual inspection suggests that agents are strongest on local state updates,
+direct arithmetic equalities, and proofs where the needed lemmas are close to
+the target theorem. Failures often involve larger invariant chains. They also
+involve non-obvious arithmetic normalization, stateful reasoning across several
+fields, or finding the right helper lemma. This aligns with the suite
+composition. Local accounting and storage obligations are better represented and
+currently easier. Compositional protocol reasoning remains a future target.
 
 \section{Discussion and Limitations}
 
@@ -364,18 +361,17 @@ understood as one layer of an AI-assisted verification stack: once engineers
 choose the property and formal model, can an agent discharge the proof?
 
 The v0.1 suite is also incomplete as a representation of Ethereum security.
-It covers accounting, storage, access control, and solvency
-properties, but less coverage of reentrancy, oracle manipulation, governance,
-L2 messaging, zero-knowledge protocol integration, cryptographic primitives,
-and multi-contract composition. The immediate roadmap is to expand these
-families while preserving the same verifier discipline and manifest-based
-comparability.
+It covers accounting, storage, access control, and solvency properties. It has
+less coverage of reentrancy, oracle manipulation, governance, L2 messaging,
+zero-knowledge protocol integration, cryptographic primitives, and
+multi-contract composition. The immediate roadmap is to expand these families
+while preserving the same verifier discipline and manifest-based comparability.
 
-Finally, model comparisons are preliminary. The release artifacts record
-per-task traces, hashes, token totals, and caveats, but providers expose
-different sampling controls and execution environments. We therefore report
-verified task counts conservatively and avoid claiming that v0.1 establishes a
-universal model ranking.
+The model comparison should be read cautiously. The release artifacts record
+per-task traces and hashes. They also record token totals and run caveats.
+Providers expose different sampling controls and execution environments. For
+that reason, v0.1 reports verified-task counts rather than a universal ranking
+of models.
 
 \section{Conclusion}
 
@@ -386,8 +382,8 @@ benchmark for \lean{} proofs of Ethereum contract correctness. Its v0.1 suite
 contains 135 tasks from 25 real or ecosystem-relevant cases, enforces
 no-placeholder proof rules, records compatibility fingerprints, and publishes
 per-model artifacts. The v0.1 results give a concrete baseline: the best
-complete run verifies 66 of 135 tasks, and several classes of protocol
-reasoning remain mostly unsolved.
+complete run verifies 66 of 135 tasks. Several classes of protocol reasoning
+remain mostly unsolved.
 
 \ifanonymous
 \else

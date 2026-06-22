@@ -162,7 +162,7 @@ def main():
     result_lines.append(r"\end{table}" + "\n\n")
 
     result_lines.append(r"\begin{table}[t]" + "\n")
-    result_lines.append(r"\caption{Non-complete v0.1 release artifacts. These artifacts document failed, partial, or invalid runs and are not ranked with complete-suite runs.}" + "\n")
+    result_lines.append(r"\caption{Non-complete v0.1 release artifacts. These rows document partial or invalid runs. They are not ranked with complete-suite runs.}" + "\n")
     result_lines.append(r"\label{tab:partial-results}" + "\n")
     result_lines.append(r"\centering" + "\n")
     result_lines.append(r"\footnotesize" + "\n")
@@ -243,7 +243,7 @@ def main():
         figure_lines.append(budget_labels + "\n")
         figure_lines.append(r"\end{axis}" + "\n")
         figure_lines.append(r"\end{tikzpicture}" + "\n")
-        figure_lines.append(r"\caption{MiniMax M3 budget-scaling cascade on a selected 50-task panel. Solved tasks are skipped at later profiles; the run reaches 48/50 before saturating.}" + "\n")
+        figure_lines.append(r"\caption{MiniMax M3 budget-scaling cascade on a selected 50-task panel. Solved tasks are skipped at later profiles. The run reaches 48/50 before saturating.}" + "\n")
         figure_lines.append(r"\label{fig:minimax-budget}" + "\n")
         figure_lines.append(r"\end{figure}" + "\n")
 
