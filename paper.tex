@@ -81,10 +81,11 @@ harness rejects \texttt{sorry}, \texttt{admit}, new axioms, theorem-statement
 edits, and imports unavailable in the isolated workspace. Version manifests
 bind scores to task, harness, and environment fingerprints, enabling
 reproducible reruns and leaderboard comparisons. We describe the benchmark
-design, its v0.1 composition, and preliminary complete-suite results for three
-frontier coding agents: GLM 5.2 verifies 53 of 135 tasks, MiniMax M3 verifies
-38, and Kimi K2.7 verifies 31. These results indicate meaningful progress but
-also show that proof generation for contract verification remains far from
+design, its v0.1 composition, and preliminary release results across all
+published complete-suite runs. The strongest complete run, GPT-5.5, verifies
+66 of 135 tasks; GLM 5.2 verifies 53, Opus 4.8 verifies 45, and the remaining
+complete runs range down to 31 tasks. These results indicate meaningful
+progress but also show that proof generation for contract verification remains far from
 solved.
 \end{abstract}
 
@@ -137,8 +138,8 @@ checking, no-placeholder rules, and CI-enforced axiom accounting. Second, it
 describes the v0.1 suite: \BenchmarkTaskCount{} tasks over
 \BenchmarkCaseCount{} cases and \BenchmarkFamilyCount{} protocol families, with
 coverage strongest in accounting, solvency, storage effects, and linked-list
-ownership structures. Third, it reports preliminary complete-suite results for
-GLM 5.2, MiniMax M3, and Kimi K2.7. The best of these solves 39\% of tasks,
+ownership structures. Third, it reports the complete-suite and partial-run
+results published with v0.1. The best complete run solves 49\% of tasks,
 suggesting that AI-assisted verification is already useful for some local proof
 obligations, while harder invariants and cross-state reasoning remain open.
 
@@ -290,19 +291,29 @@ remain visible without being ranked against complete-suite runs.
 
 The primary metric is verified tasks over total active tasks. Token counts are
 reported when providers expose them, but they are secondary because provider
-interfaces, forced temperatures, rate limits, and agent wrappers differ. The
-v0.1 release notes specifically identify Kimi K2.7 as a provider-forced
-temperature-one run, so its score should be read as a transparent preliminary
-measurement rather than a perfectly controlled comparison.
+interfaces, sampling controls, rate limits, and agent wrappers differ. The
+v0.1 release separates complete-suite runs from partial artifacts, so the
+headline comparison ranks only complete runs while retaining partial runs as
+diagnostic evidence.
 
 \section{Preliminary Results}
 
-Table~\ref{tab:results} reports complete-suite v0.1 runs for the three models
-highlighted in this paper. GLM 5.2 verifies 53 of 135 tasks, MiniMax M3
-verifies 38, and Kimi K2.7 verifies 31. These scores are high enough to show
-that agents can already complete nontrivial proof obligations, but low enough
-to show that smart contract proof generation is not solved by current coding
-agents.
+Table~\ref{tab:results} reports every complete-suite v0.1 run published in the
+release artifacts. GPT-5.5 verifies 66 of 135 tasks, the strongest complete
+score in the release. GLM 5.2 verifies 53 tasks, Opus 4.8 verifies 45,
+grok-build-0.1 verifies 41, MiniMax M3 verifies 38, Kimi K2.7 verifies 31, and
+no complete run crosses the halfway point. The spread matters: current agents
+are not merely failing uniformly, but the best result still leaves 69 tasks
+unverified. This makes the benchmark useful for measuring incremental progress
+rather than for declaring the problem solved.
+
+Table~\ref{tab:partial-results} reports the non-complete artifacts from the
+same v0.1 release, including partial and invalid runs. The most notable partial
+artifact is GPT-5.5 Pro, which verifies 35 of 54 attempted tasks. That is a
+high within-run rate, but it is not a complete-suite result and therefore
+should not be ranked against complete 135-task runs. Invalid zero-usage
+artifacts are retained in the release manifest because they document failed
+provider or scheduling attempts rather than proof capability.
 
 Manual inspection of successful tasks suggests that agents are strongest on
 local state updates, direct arithmetic equalities, frame properties, and

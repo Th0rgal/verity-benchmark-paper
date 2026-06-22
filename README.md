@@ -18,7 +18,9 @@ Outputs:
 - `build/paper-anonymous.pdf`
 - `build/paper-author.pdf`
 
-The default table generator reads `../verity-benchmark`. Override it with:
+The default table generator reads `../verity-benchmark`, expected to be a
+checkout of `lfglabs-dev/ethereum-verification-benchmark` at tag `v0.1`.
+Override it with:
 
 ```bash
 make BENCHMARK_DIR=/path/to/verity-benchmark
